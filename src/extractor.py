@@ -13,24 +13,10 @@ extractor.py - שליפת EXIF מתמונות
 
 
 def has_gps(data: dict):
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    if "GPSInfo" in data:
+        return True
+    else:
+        return False
 
 
 def latitude(data: dict):
@@ -75,60 +61,22 @@ def longitude(data: dict):
 
 
 def datatime(data: dict):
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    try:
+        return data["DateTime"].replace(":", "-", 2)
+    except KeyError:
+        return None
 
 def camera_make(data: dict):
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    try:
+        return data["Make"].strip("\x00")
+    except KeyError:
+        return None
 
 def camera_model(data: dict):
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    try:
+        return data["Model"].strip("\x00")
+    except KeyError:
+        return None
 
 def extract_metadata(image_path):
 
