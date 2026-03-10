@@ -2,7 +2,7 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 from pathlib import Path
 import os
-from function import dms_to_decimal
+
 """
 extractor.py - שליפת EXIF מתמונות
 צוות 1, זוג A
@@ -11,86 +11,49 @@ extractor.py - שליפת EXIF מתמונות
 
 """
 
+def dms_to_decimal(dms_tuple, ref):
+    degrees = dms_tuple[0][0] / dms_tuple[0][1]
+    minutes = dms_tuple[1][0] / dms_tuple[1][1]
+    seconds = dms_tuple[2][0] / dms_tuple[2][1]
+    decimal = degrees + minutes / 60 + seconds / 3600
+    if ref in [b'S', b'W', 'S', 'W']:
+        decimal = -decimal
+    return f"{decimal:.4f}"
+
+
+
 
 def has_gps(data: dict):
-
-    if  34853 in data:
-        return True
-    else:
-        return False
-
-
-
-
-
-
-
-
-
-
-
-
-
+    if "GPSInfo" in data:
+        gps_info = data["GPSInfo"]
+        return 2 in gps_info and 4 in gps_info
+    return False
 
 
 
 def latitude(data: dict):
-     ref=data.get(1)
-     dms_to=data.get(2)
-     if ref is None or dms_to is None:
-         return None
-     return dms_to_decimal(dms_to,ref)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    try:
+        gps_info = data["GPSInfo"]
+        lat_tuple = tuple((float(x),1) for x in gps_info[2])
+        lat_ref = gps_info[1]
+        return dms_to_decimal(lat_tuple,lat_ref)
+    except:
+        return None
 
 def longitude(data: dict):
-    ref = data.get(3)
-    dms_to = data.get(4)
-    if ref is None or dms_to is None:
+    try:
+        gps_info = data["GPSInfo"]
+        lon_tuple = tuple((float(x),1) for x in gps_info[4])
+        lon_ref = gps_info[3]
+        return dms_to_decimal(lon_tuple, lon_ref)
+    except:
         return None
-    return dms_to_decimal(dms_to, ref)
-
-
-
-
-
-
-
-
-
-
-
 
 def datatime(data: dict):
     try:
         return data["DateTime"].replace(":", "-", 2)
     except KeyError:
         return None
-
-
-
-
-
-
-
-
-
-
-
 
 
 def camera_make(data: dict):
@@ -100,18 +63,6 @@ def camera_make(data: dict):
         return None
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 def camera_model(data: dict):
     try:
         return data["Model"].strip("\x00")
@@ -119,61 +70,17 @@ def camera_model(data: dict):
         return None
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 def extract_metadata(image_path):
-    path = Path(image_path)
-    if path.suffix.lower() == ".jpg":
-        with Image.open(image_path)as img:
-            all_exif=img.getexif()
+    """
+    שולף EXIF מתמונה בודדת.
 
-            exif = {}
+    Args:
+        image_path: נתיב לקובץ תמונה
 
-            for tag_id, value in all_exif.items():
-                new_tag_id=TAGS.get(tag_id,tag_id)
-                exif[new_tag_id]=value
-            return exif
-
-
-
-    return None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # """
-    # שולף EXIF מתמונה בודדת.
-    #
-    # Args:
-    #     image_path: נתיב לקובץ תמונה
-    #
-    # Returns:
-    #     dict עם: filename, datetime, latitude, longitude,
-    #           camera_make, camera_model, has_gps
-    # """
+    Returns:
+        dict עם: filename, datetime, latitude, longitude,
+              camera_make, camera_model, has_gps
+    """
     path = Path(image_path)
 
     # תיקון: טיפול בתמונה בלי EXIF - בלי זה, exif.items() נופל עם AttributeError
@@ -214,21 +121,20 @@ def extract_metadata(image_path):
 
 
 def extract_all(folder_path):
-    listi=[]
-    for fill in folder_path:
-       dicti=extract_metadata(fill)
-       listi.append(dicti)
+    """
+    שולף EXIF מכל התמונות בתיקייה.
 
+    Args:
+        folder_path: נתיב לתיקייה
 
-
-
-
-
-
-
-
-
-
-
-
+    Returns:
+        list של dicts (כמו extract_metadata)
+    """
+    path = Path(folder_path)
+    all_results = []
+    for file_path in path.iterdir():
+        if file_path.is_file() and file_path.suffix.lower() in [".jpg",".jpeg",".png",".tiff"]:
+            metadata = extract_metadata(str(file_path))
+            all_results.append(metadata)
+    return all_results
 
